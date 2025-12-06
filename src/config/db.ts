@@ -1,9 +1,13 @@
 import { Pool } from "pg";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const DB_URL = process.env.DATABASE_URL;
 
 // connecting database
 export const pool = new Pool({
-  connectionString:
-    "postgresql://neondb_owner:npg_7KU9kvQjoHJi@ep-wandering-frost-a8dlarmo-pooler.eastus2.azure.neon.tech/neondb?sslmode=require&channel_binding=require",
+  connectionString: DB_URL,
 });
 
 // creating tables for db
