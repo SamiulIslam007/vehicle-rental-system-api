@@ -2,6 +2,7 @@ import express from "express";
 import { initDB } from "./config/db";
 import { userRoute } from "./modules/user/user.route";
 import verify from "./middleware/verify";
+import { authRoute } from "./modules/auth/auth.route";
 
 const app = express();
 app.use(express.json()); // parse korte hoise na hole body undefined asbe
@@ -11,6 +12,8 @@ initDB();
 
 // All routes
 app.use("/api/v1/users", verify, userRoute);
+
+app.use("/api/v1/auth", authRoute);
 
 // 404 Route - Not Found Handler
 app.use((req, res, next) => {
