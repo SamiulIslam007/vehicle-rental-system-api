@@ -7,10 +7,10 @@ export interface JWTPayload {
   role: string;
 }
 
-export const generateToken = (payload: JWTPayload) => {
-  return jwt.sign(payload, config.jwt.secret, {
-    expiresIn: config.jwt.expiresIn,
-  });
+export const generateToken = (payload: JWTPayload): string => {
+  return jwt.sign(payload, config.jwt.secret as string, {
+    expiresIn: config.jwt.expiresIn as string,
+  }) as string;
 };
 
 export const verifyToken = (token: string): JWTPayload => {
