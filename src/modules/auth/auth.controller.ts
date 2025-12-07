@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { authServices } from "./service";
+import { authServices } from "./auth.service";
 
 export const signupController = async (
   req: Request,
