@@ -1,5 +1,6 @@
 import express from "express";
 import type { Application, Request, Response } from "express";
+import { authRoutes } from "./modules/auth/auth.route";
 
 const app: Application = express();
 

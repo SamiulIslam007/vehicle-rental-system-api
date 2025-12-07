@@ -28,4 +28,4 @@ router.delete(
   deleteUserController
 );
 
-export default router;
+export const userRoutes = router;
