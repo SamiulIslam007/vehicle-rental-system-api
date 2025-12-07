@@ -2,6 +2,8 @@ import express from "express";
 import type { Application, Request, Response } from "express";
 import { userRoutes } from "./modules/users/user.route";
 import { authRoutes } from "./modules/auth/auth.route";
+import { vehicleRoutes } from "./modules/vehicles/vehicles.route";
+import { bookingsRoutes } from "./modules/bookings/bookings.route";
 
 const app: Application = express();
 
@@ -12,8 +14,8 @@ app.use(express.urlencoded({ extended: true }));
 // API Routes
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
-// app.use("/api/v1/vehicles", vehiclesRoutes);
-// app.use("/api/v1/bookings", bookingsRoutes);
+app.use("/api/v1/vehicles", vehicleRoutes);
+app.use("/api/v1/bookings", bookingsRoutes);
 
 // 404 handler
 app.use((req: Request, res: Response) => {

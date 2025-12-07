@@ -1,5 +1,5 @@
-import { pool } from '../../config/db';
-import { AppError } from '../../middlewares/error';
+import { pool } from "../../config/db";
+import { AppError } from "../../middlewares/error";
 
 // Helper function to calculate days between dates
 const calculateDays = (startDate: Date, endDate: Date): number => {
@@ -8,9 +8,17 @@ const calculateDays = (startDate: Date, endDate: Date): number => {
   return diffDays;
 };
 
+// Helper function to format date to YYYY-MM-DD string
+const formatDate = (date: Date | string | null): string => {
+  if (!date) return "";
+  const d = typeof date === "string" ? new Date(date) : date;
+  const isoString = d.toISOString();
+  return isoString.split("T")[0] || "";
+};
+
 // Helper function to check and auto-return expired bookings
 export const checkAndAutoReturnBookings = async () => {
-  const now = new Date().toISOString().split('T')[0];
+  const now = new Date().toISOString().split("T")[0];
 
   // Find expired active bookings
   const expiredQuery = `
@@ -46,7 +54,7 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
   const endDate = new Date(rent_end_date as string);
 
   if (endDate <= startDate) {
-    throw new AppError('Rent end date must be after rent start date', 400);
+    throw new AppError("Rent end date must be after rent start date", 400);
   }
 
   // Check if customer exists
@@ -56,7 +64,7 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
   ]);
 
   if (customerResult.rows.length === 0) {
-    throw new AppError('Customer not found', 404);
+    throw new AppError("Customer not found", 404);
   }
 
   // Check if vehicle exists and is available
@@ -68,13 +76,13 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
   const vehicleResult = await pool.query(vehicleQuery, [vehicle_id as number]);
 
   if (vehicleResult.rows.length === 0) {
-    throw new AppError('Vehicle not found', 404);
+    throw new AppError("Vehicle not found", 404);
   }
 
   const vehicle = vehicleResult.rows[0];
 
-  if (vehicle.availability_status === 'booked') {
-    throw new AppError('Vehicle is not available for booking', 400);
+  if (vehicle.availability_status === "booked") {
+    throw new AppError("Vehicle is not available for booking", 400);
   }
 
   // Check for overlapping bookings
@@ -97,7 +105,7 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
   ]);
 
   if (overlapResult.rows.length > 0) {
-    throw new AppError('Vehicle is already booked for this period', 400);
+    throw new AppError("Vehicle is already booked for this period", 400);
   }
 
   // Calculate total price
@@ -108,7 +116,7 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
   const client = await pool.connect();
 
   try {
-    await client.query('BEGIN');
+    await client.query("BEGIN");
 
     // Create booking
     const bookingQuery = `
@@ -131,7 +139,7 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
       [vehicle_id]
     );
 
-    await client.query('COMMIT');
+    await client.query("COMMIT");
 
     const booking = bookingResult.rows[0];
 
@@ -145,12 +153,23 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
       vehicle_id,
     ]);
 
+    const vehicle = vehicleDetailsResult.rows[0];
+
     return {
-      ...booking,
-      vehicle: vehicleDetailsResult.rows[0],
+      id: Number(booking.id),
+      customer_id: Number(booking.customer_id),
+      vehicle_id: Number(booking.vehicle_id),
+      rent_start_date: formatDate(booking.rent_start_date),
+      rent_end_date: formatDate(booking.rent_end_date),
+      total_price: Number(booking.total_price),
+      status: booking.status,
+      vehicle: {
+        vehicle_name: vehicle.vehicle_name,
+        daily_rent_price: Number(vehicle.daily_rent_price),
+      },
     };
   } catch (error) {
-    await client.query('ROLLBACK');
+    await client.query("ROLLBACK");
     throw error;
   } finally {
     client.release();
@@ -161,7 +180,7 @@ const getAllBookingsFromDB = async (userId: number, userRole: string) => {
   // Check and auto-return expired bookings first
   await checkAndAutoReturnBookings();
 
-  if (userRole === 'admin') {
+  if (userRole === "admin") {
     const query = `
       SELECT 
         b.id,
@@ -186,7 +205,17 @@ const getAllBookingsFromDB = async (userId: number, userRole: string) => {
     `;
 
     const result = await pool.query(query);
-    return result.rows;
+    return result.rows.map((row) => ({
+      id: Number(row.id),
+      customer_id: Number(row.customer_id),
+      vehicle_id: Number(row.vehicle_id),
+      rent_start_date: formatDate(row.rent_start_date),
+      rent_end_date: formatDate(row.rent_end_date),
+      total_price: Number(row.total_price),
+      status: row.status,
+      customer: row.customer,
+      vehicle: row.vehicle,
+    }));
   } else {
     const query = `
       SELECT 
@@ -208,7 +237,15 @@ const getAllBookingsFromDB = async (userId: number, userRole: string) => {
     `;
 
     const result = await pool.query(query, [userId]);
-    return result.rows;
+    return result.rows.map((row) => ({
+      id: Number(row.id),
+      vehicle_id: Number(row.vehicle_id),
+      rent_start_date: formatDate(row.rent_start_date),
+      rent_end_date: formatDate(row.rent_end_date),
+      total_price: Number(row.total_price),
+      status: row.status,
+      vehicle: row.vehicle,
+    }));
   }
 };
 
@@ -232,38 +269,38 @@ const updateBookingIntoDB = async (
   const bookingResult = await pool.query(bookingQuery, [bookingId]);
 
   if (bookingResult.rows.length === 0) {
-    throw new AppError('Booking not found', 404);
+    throw new AppError("Booking not found", 404);
   }
 
   const booking = bookingResult.rows[0];
 
-  if (status === 'cancelled') {
+  if (status === "cancelled") {
     // Only customers can cancel, and only their own bookings
-    if (userRole !== 'customer') {
-      throw new AppError('Only customers can cancel bookings', 403);
+    if (userRole !== "customer") {
+      throw new AppError("Only customers can cancel bookings", 403);
     }
 
     // Check if customer owns this booking
     if (userId && booking.customer_id !== userId) {
-      throw new AppError('You can only cancel your own bookings', 403);
+      throw new AppError("You can only cancel your own bookings", 403);
     }
 
     const now = new Date();
     const startDate = new Date(booking.rent_start_date);
 
     if (startDate <= now) {
-      throw new AppError('Cannot cancel booking after start date', 400);
+      throw new AppError("Cannot cancel booking after start date", 400);
     }
 
-    if (booking.status !== 'active') {
-      throw new AppError('Only active bookings can be cancelled', 400);
+    if (booking.status !== "active") {
+      throw new AppError("Only active bookings can be cancelled", 400);
     }
 
     // Start transaction
     const client = await pool.connect();
 
     try {
-      await client.query('BEGIN');
+      await client.query("BEGIN");
 
       // Update booking status
       await client.query(
@@ -277,7 +314,7 @@ const updateBookingIntoDB = async (
         [booking.vehicle_id]
       );
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       // Get updated booking (after commit, use pool)
       const updatedQuery = `
@@ -287,28 +324,37 @@ const updateBookingIntoDB = async (
       `;
       const updatedResult = await pool.query(updatedQuery, [bookingId]);
 
-      return updatedResult.rows[0];
+      const updatedBooking = updatedResult.rows[0];
+      return {
+        id: Number(updatedBooking.id),
+        customer_id: Number(updatedBooking.customer_id),
+        vehicle_id: Number(updatedBooking.vehicle_id),
+        rent_start_date: formatDate(updatedBooking.rent_start_date),
+        rent_end_date: formatDate(updatedBooking.rent_end_date),
+        total_price: Number(updatedBooking.total_price),
+        status: updatedBooking.status,
+      };
     } catch (error) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       throw error;
     } finally {
       client.release();
     }
-  } else if (status === 'returned') {
+  } else if (status === "returned") {
     // Only admin can mark as returned
-    if (userRole !== 'admin') {
-      throw new AppError('Only admins can mark bookings as returned', 403);
+    if (userRole !== "admin") {
+      throw new AppError("Only admins can mark bookings as returned", 403);
     }
 
-    if (booking.status === 'returned') {
-      throw new AppError('Booking is already marked as returned', 400);
+    if (booking.status === "returned") {
+      throw new AppError("Booking is already marked as returned", 400);
     }
 
     // Start transaction
     const client = await pool.connect();
 
     try {
-      await client.query('BEGIN');
+      await client.query("BEGIN");
 
       // Update booking status
       await client.query(
@@ -322,7 +368,7 @@ const updateBookingIntoDB = async (
         [booking.vehicle_id]
       );
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       // Get updated booking with vehicle info (after commit, use pool)
       const updatedQuery = `
@@ -342,15 +388,25 @@ const updateBookingIntoDB = async (
       `;
       const updatedResult = await pool.query(updatedQuery, [bookingId]);
 
-      return updatedResult.rows[0];
+      const updatedBooking = updatedResult.rows[0];
+      return {
+        id: Number(updatedBooking.id),
+        customer_id: Number(updatedBooking.customer_id),
+        vehicle_id: Number(updatedBooking.vehicle_id),
+        rent_start_date: formatDate(updatedBooking.rent_start_date),
+        rent_end_date: formatDate(updatedBooking.rent_end_date),
+        total_price: Number(updatedBooking.total_price),
+        status: updatedBooking.status,
+        vehicle: updatedBooking.vehicle,
+      };
     } catch (error) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       throw error;
     } finally {
       client.release();
     }
   } else {
-    throw new AppError('Invalid status', 400);
+    throw new AppError("Invalid status", 400);
   }
 };
 
@@ -359,4 +415,3 @@ export const bookingServices = {
   getAllBookingsFromDB,
   updateBookingIntoDB,
 };
-

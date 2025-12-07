@@ -1,54 +1,49 @@
-import { Router } from 'express';
+import { Router } from "express";
 import {
   createVehicleController,
   getAllVehiclesController,
   getVehicleByIdController,
   updateVehicleController,
   deleteVehicleController,
-} from './controller';
-import { authenticate } from '../../middlewares/auth';
-import { authorize } from '../../middlewares/authorize';
-import { validate } from '../../middlewares/validate';
+} from "./vehicles.controller";
+import { authenticate } from "../../middlewares/auth";
+import { authorize } from "../../middlewares/authorize";
+import { validate } from "../../middlewares/validate";
 import {
   createVehicleSchema,
   getVehicleSchema,
   updateVehicleSchema,
   deleteVehicleSchema,
-} from './validation';
+} from "./vehicles.validation";
 
 const router = Router();
 
 router.post(
-  '/',
+  "/",
   authenticate,
-  authorize('admin'),
+  authorize("admin"),
   validate(createVehicleSchema),
   createVehicleController
 );
 
-router.get('/', getAllVehiclesController);
+router.get("/", getAllVehiclesController);
 
-router.get(
-  '/:vehicleId',
-  validate(getVehicleSchema),
-  getVehicleByIdController
-);
+router.get("/:vehicleId", validate(getVehicleSchema), getVehicleByIdController);
 
 router.put(
-  '/:vehicleId',
+  "/:vehicleId",
   authenticate,
-  authorize('admin'),
+  authorize("admin"),
   validate(updateVehicleSchema),
   updateVehicleController
 );
 
 router.delete(
-  '/:vehicleId',
+  "/:vehicleId",
   authenticate,
-  authorize('admin'),
+  authorize("admin"),
   validate(deleteVehicleSchema),
   deleteVehicleController
 );
 
-export default router;
-
+export const vehicleRoutes = router;

@@ -1,30 +1,32 @@
-import { Router } from 'express';
+import { Router } from "express";
 import {
   createBookingController,
   getAllBookingsController,
   updateBookingController,
-} from './controller';
-import { authenticate } from '../../middlewares/auth';
-import { validate } from '../../middlewares/validate';
-import { createBookingSchema, updateBookingSchema } from './validation';
+} from "./bookings.controller";
+import { authenticate } from "../../middlewares/auth";
+import { validate } from "../../middlewares/validate";
+import {
+  createBookingSchema,
+  updateBookingSchema,
+} from "./bookings.validation";
 
 const router = Router();
 
 router.post(
-  '/',
+  "/",
   authenticate,
   validate(createBookingSchema),
   createBookingController
 );
 
-router.get('/', authenticate, getAllBookingsController);
+router.get("/", authenticate, getAllBookingsController);
 
 router.put(
-  '/:bookingId',
+  "/:bookingId",
   authenticate,
   validate(updateBookingSchema),
   updateBookingController
 );
 
-export default router;
-
+export const bookingsRoutes = router;

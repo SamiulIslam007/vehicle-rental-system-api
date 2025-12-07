@@ -1,5 +1,5 @@
-import { pool } from '../../config/db';
-import { AppError } from '../../middlewares/error';
+import { pool } from "../../config/db";
+import { AppError } from "../../middlewares/error";
 
 const createVehicleIntoDB = async (payload: Record<string, unknown>) => {
   const {
@@ -17,7 +17,7 @@ const createVehicleIntoDB = async (payload: Record<string, unknown>) => {
   ]);
 
   if (checkResult.rows.length > 0) {
-    throw new AppError('Registration number already exists', 400);
+    throw new AppError("Registration number already exists", 400);
   }
 
   const query = `
@@ -31,10 +31,18 @@ const createVehicleIntoDB = async (payload: Record<string, unknown>) => {
     type,
     registration_number,
     daily_rent_price,
-    availability_status || 'available',
+    availability_status || "available",
   ]);
 
-  return result.rows[0];
+  const vehicle = result.rows[0];
+  return {
+    id: Number(vehicle.id),
+    vehicle_name: vehicle.vehicle_name,
+    type: vehicle.type,
+    registration_number: vehicle.registration_number,
+    daily_rent_price: Number(vehicle.daily_rent_price),
+    availability_status: vehicle.availability_status,
+  };
 };
 
 const getAllVehiclesFromDB = async () => {
@@ -45,7 +53,14 @@ const getAllVehiclesFromDB = async () => {
   `;
 
   const result = await pool.query(query);
-  return result.rows;
+  return result.rows.map((row) => ({
+    id: Number(row.id),
+    vehicle_name: row.vehicle_name,
+    type: row.type,
+    registration_number: row.registration_number,
+    daily_rent_price: Number(row.daily_rent_price),
+    availability_status: row.availability_status,
+  }));
 };
 
 const getVehicleByIdFromDB = async (vehicleId: number) => {
@@ -58,10 +73,18 @@ const getVehicleByIdFromDB = async (vehicleId: number) => {
   const result = await pool.query(query, [vehicleId]);
 
   if (result.rows.length === 0) {
-    throw new AppError('Vehicle not found', 404);
+    throw new AppError("Vehicle not found", 404);
   }
 
-  return result.rows[0];
+  const vehicle = result.rows[0];
+  return {
+    id: Number(vehicle.id),
+    vehicle_name: vehicle.vehicle_name,
+    type: vehicle.type,
+    registration_number: vehicle.registration_number,
+    daily_rent_price: Number(vehicle.daily_rent_price),
+    availability_status: vehicle.availability_status,
+  };
 };
 
 const updateVehicleIntoDB = async (
@@ -73,7 +96,7 @@ const updateVehicleIntoDB = async (
   const checkResult = await pool.query(checkQuery, [vehicleId]);
 
   if (checkResult.rows.length === 0) {
-    throw new AppError('Vehicle not found', 404);
+    throw new AppError("Vehicle not found", 404);
   }
 
   const existingVehicle = checkResult.rows[0];
@@ -89,7 +112,7 @@ const updateVehicleIntoDB = async (
     ]);
 
     if (regCheckResult.rows.length > 0) {
-      throw new AppError('Registration number already exists', 400);
+      throw new AppError("Registration number already exists", 400);
     }
   }
 
@@ -129,13 +152,21 @@ const updateVehicleIntoDB = async (
 
   const query = `
     UPDATE vehicles
-    SET ${updateFields.join(', ')}
+    SET ${updateFields.join(", ")}
     WHERE id = $${paramCount}
     RETURNING id, vehicle_name, type, registration_number, daily_rent_price, availability_status
   `;
 
   const result = await pool.query(query, values);
-  return result.rows[0];
+  const vehicle = result.rows[0];
+  return {
+    id: Number(vehicle.id),
+    vehicle_name: vehicle.vehicle_name,
+    type: vehicle.type,
+    registration_number: vehicle.registration_number,
+    daily_rent_price: Number(vehicle.daily_rent_price),
+    availability_status: vehicle.availability_status,
+  };
 };
 
 const deleteVehicleFromDB = async (vehicleId: number) => {
@@ -151,11 +182,11 @@ const deleteVehicleFromDB = async (vehicleId: number) => {
   const checkResult = await pool.query(checkQuery, [vehicleId]);
 
   if (checkResult.rows.length === 0) {
-    throw new AppError('Vehicle not found', 404);
+    throw new AppError("Vehicle not found", 404);
   }
 
   if (parseInt(checkResult.rows[0].active_bookings) > 0) {
-    throw new AppError('Cannot delete vehicle with active bookings', 400);
+    throw new AppError("Cannot delete vehicle with active bookings", 400);
   }
 
   const deleteQuery = `DELETE FROM vehicles WHERE id = $1`;
@@ -169,4 +200,3 @@ export const vehicleServices = {
   updateVehicleIntoDB,
   deleteVehicleFromDB,
 };
-
