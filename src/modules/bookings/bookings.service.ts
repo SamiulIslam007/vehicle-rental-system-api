@@ -1,14 +1,12 @@
 import { pool } from "../../config/db";
 import { AppError } from "../../middlewares/error";
 
-// Helper function to calculate days between dates
 const calculateDays = (startDate: Date, endDate: Date): number => {
   const diffTime = endDate.getTime() - startDate.getTime();
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   return diffDays;
 };
 
-// Helper function to format date to YYYY-MM-DD string
 const formatDate = (date: Date | string | null): string => {
   if (!date) return "";
   const d = typeof date === "string" ? new Date(date) : date;
@@ -16,11 +14,9 @@ const formatDate = (date: Date | string | null): string => {
   return isoString.split("T")[0] || "";
 };
 
-// Helper function to check and auto-return expired bookings
 export const checkAndAutoReturnBookings = async () => {
   const now = new Date().toISOString().split("T")[0];
 
-  // Find expired active bookings
   const expiredQuery = `
     SELECT id, vehicle_id
     FROM bookings
@@ -29,14 +25,12 @@ export const checkAndAutoReturnBookings = async () => {
 
   const expiredResult = await pool.query(expiredQuery, [now]);
 
-  // Update expired bookings to returned
   for (const booking of expiredResult.rows) {
     await pool.query(
       `UPDATE bookings SET status = 'returned', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
       [booking.id]
     );
 
-    // Update vehicle availability
     await pool.query(
       `UPDATE vehicles SET availability_status = 'available', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
       [booking.vehicle_id]
@@ -45,7 +39,6 @@ export const checkAndAutoReturnBookings = async () => {
 };
 
 const createBookingIntoDB = async (payload: Record<string, unknown>) => {
-  // Check and auto-return expired bookings first
   await checkAndAutoReturnBookings();
 
   const { customer_id, vehicle_id, rent_start_date, rent_end_date } = payload;
@@ -57,7 +50,6 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
     throw new AppError("Rent end date must be after rent start date", 400);
   }
 
-  // Check if customer exists
   const customerQuery = `SELECT id FROM users WHERE id = $1`;
   const customerResult = await pool.query(customerQuery, [
     customer_id as number,
@@ -67,7 +59,6 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
     throw new AppError("Customer not found", 404);
   }
 
-  // Check if vehicle exists and is available
   const vehicleQuery = `
     SELECT id, daily_rent_price, availability_status
     FROM vehicles
@@ -85,7 +76,6 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
     throw new AppError("Vehicle is not available for booking", 400);
   }
 
-  // Check for overlapping bookings
   const overlapQuery = `
     SELECT id
     FROM bookings
@@ -108,17 +98,14 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
     throw new AppError("Vehicle is already booked for this period", 400);
   }
 
-  // Calculate total price
   const numberOfDays = calculateDays(startDate, endDate);
   const totalPrice = parseFloat(vehicle.daily_rent_price) * numberOfDays;
 
-  // Start transaction
   const client = await pool.connect();
 
   try {
     await client.query("BEGIN");
 
-    // Create booking
     const bookingQuery = `
       INSERT INTO bookings (customer_id, vehicle_id, rent_start_date, rent_end_date, total_price, status)
       VALUES($1, $2, $3, $4, $5, 'active')
@@ -133,7 +120,6 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
       totalPrice,
     ]);
 
-    // Update vehicle availability
     await client.query(
       `UPDATE vehicles SET availability_status = 'booked', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
       [vehicle_id]
@@ -143,7 +129,6 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
 
     const booking = bookingResult.rows[0];
 
-    // Get vehicle details for response (after commit, use pool)
     const vehicleDetailsQuery = `
       SELECT vehicle_name, daily_rent_price
       FROM vehicles
@@ -177,7 +162,6 @@ const createBookingIntoDB = async (payload: Record<string, unknown>) => {
 };
 
 const getAllBookingsFromDB = async (userId: number, userRole: string) => {
-  // Check and auto-return expired bookings first
   await checkAndAutoReturnBookings();
 
   if (userRole === "admin") {
@@ -255,7 +239,6 @@ const updateBookingIntoDB = async (
   userRole: string,
   userId?: number
 ) => {
-  // Check and auto-return expired bookings first
   await checkAndAutoReturnBookings();
 
   // Get booking details
@@ -275,7 +258,6 @@ const updateBookingIntoDB = async (
   const booking = bookingResult.rows[0];
 
   if (status === "cancelled") {
-    // Only customers can cancel, and only their own bookings
     if (userRole !== "customer") {
       throw new AppError("Only customers can cancel bookings", 403);
     }
@@ -296,19 +278,16 @@ const updateBookingIntoDB = async (
       throw new AppError("Only active bookings can be cancelled", 400);
     }
 
-    // Start transaction
     const client = await pool.connect();
 
     try {
       await client.query("BEGIN");
 
-      // Update booking status
       await client.query(
         `UPDATE bookings SET status = 'cancelled', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
         [bookingId]
       );
 
-      // Update vehicle availability
       await client.query(
         `UPDATE vehicles SET availability_status = 'available', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
         [booking.vehicle_id]
@@ -316,7 +295,6 @@ const updateBookingIntoDB = async (
 
       await client.query("COMMIT");
 
-      // Get updated booking (after commit, use pool)
       const updatedQuery = `
         SELECT id, customer_id, vehicle_id, rent_start_date, rent_end_date, total_price, status
         FROM bookings
@@ -341,7 +319,6 @@ const updateBookingIntoDB = async (
       client.release();
     }
   } else if (status === "returned") {
-    // Only admin can mark as returned
     if (userRole !== "admin") {
       throw new AppError("Only admins can mark bookings as returned", 403);
     }
@@ -350,19 +327,16 @@ const updateBookingIntoDB = async (
       throw new AppError("Booking is already marked as returned", 400);
     }
 
-    // Start transaction
     const client = await pool.connect();
 
     try {
       await client.query("BEGIN");
 
-      // Update booking status
       await client.query(
         `UPDATE bookings SET status = 'returned', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
         [bookingId]
       );
 
-      // Update vehicle availability
       await client.query(
         `UPDATE vehicles SET availability_status = 'available', updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
         [booking.vehicle_id]
@@ -370,7 +344,6 @@ const updateBookingIntoDB = async (
 
       await client.query("COMMIT");
 
-      // Get updated booking with vehicle info (after commit, use pool)
       const updatedQuery = `
         SELECT 
           b.id,

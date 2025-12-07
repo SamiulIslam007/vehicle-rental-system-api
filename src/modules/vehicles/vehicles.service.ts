@@ -10,7 +10,6 @@ const createVehicleIntoDB = async (payload: Record<string, unknown>) => {
     availability_status,
   } = payload;
 
-  // Check if registration number already exists
   const checkQuery = `SELECT id FROM vehicles WHERE registration_number = $1`;
   const checkResult = await pool.query(checkQuery, [
     registration_number as string,
@@ -91,7 +90,6 @@ const updateVehicleIntoDB = async (
   vehicleId: number,
   payload: Record<string, unknown>
 ) => {
-  // Check if vehicle exists
   const checkQuery = `SELECT id, registration_number FROM vehicles WHERE id = $1`;
   const checkResult = await pool.query(checkQuery, [vehicleId]);
 
@@ -101,7 +99,6 @@ const updateVehicleIntoDB = async (
 
   const existingVehicle = checkResult.rows[0];
 
-  // Check if registration number is being updated and already exists
   if (
     payload.registration_number &&
     payload.registration_number !== existingVehicle.registration_number
@@ -116,7 +113,6 @@ const updateVehicleIntoDB = async (
     }
   }
 
-  // Build dynamic update query
   const updateFields: string[] = [];
   const values: unknown[] = [];
   let paramCount = 1;
@@ -143,7 +139,6 @@ const updateVehicleIntoDB = async (
   }
 
   if (updateFields.length === 0) {
-    // No fields to update, return existing vehicle
     return await getVehicleByIdFromDB(vehicleId);
   }
 
@@ -170,7 +165,6 @@ const updateVehicleIntoDB = async (
 };
 
 const deleteVehicleFromDB = async (vehicleId: number) => {
-  // Check if vehicle exists and has active bookings
   const checkQuery = `
     SELECT v.id, COUNT(b.id) as active_bookings
     FROM vehicles v

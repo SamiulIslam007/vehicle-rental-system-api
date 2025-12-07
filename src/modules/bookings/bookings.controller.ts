@@ -8,8 +8,6 @@ export const createBookingController = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    // If customer is creating booking, use their own ID
-    // If admin, customer_id must be provided
     let customerId: number;
     if (req.user!.role === "customer") {
       customerId = req.user!.id;

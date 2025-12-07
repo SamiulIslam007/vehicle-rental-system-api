@@ -26,7 +26,7 @@ export const updateUserController = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = parseInt(req.params.userId);
+    const userId = parseInt(req.params.userId as string);
     const currentUserId = req.user!.id;
     const currentUserRole = req.user!.role;
 
@@ -53,7 +53,7 @@ export const deleteUserController = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = parseInt(req.params.userId);
+    const userId = parseInt(req.params.userId as string);
 
     await userServices.deleteUserFromDB(userId);
 

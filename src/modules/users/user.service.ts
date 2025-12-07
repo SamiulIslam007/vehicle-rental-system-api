@@ -18,7 +18,6 @@ const updateUserIntoDB = async (
   currentUserId: number,
   currentUserRole: string
 ) => {
-  // Check if user exists
   const checkQuery = `SELECT id, email FROM users WHERE id = $1`;
   const checkResult = await pool.query(checkQuery, [userId]);
 
@@ -28,17 +27,14 @@ const updateUserIntoDB = async (
 
   const existingUser = checkResult.rows[0];
 
-  // If customer is trying to update, they can only update themselves
   if (currentUserRole === "customer" && currentUserId !== userId) {
     throw new AppError("You can only update your own profile", 403);
   }
 
-  // If customer is trying to update role, prevent it
   if (currentUserRole === "customer" && payload.role) {
     throw new AppError("You cannot change your role", 403);
   }
 
-  // Check if email is being updated and already exists
   if (payload.email && payload.email !== existingUser.email) {
     const emailCheckQuery = `SELECT id FROM users WHERE email = $1`;
     const emailCheckResult = await pool.query(emailCheckQuery, [
@@ -50,7 +46,6 @@ const updateUserIntoDB = async (
     }
   }
 
-  // Build dynamic update query
   const updateFields: string[] = [];
   const values: unknown[] = [];
   let paramCount = 1;
@@ -73,7 +68,6 @@ const updateUserIntoDB = async (
   }
 
   if (updateFields.length === 0) {
-    // No fields to update, return existing user
     const query = `
       SELECT id, name, email, phone, role
       FROM users
@@ -98,7 +92,6 @@ const updateUserIntoDB = async (
 };
 
 const deleteUserFromDB = async (userId: number) => {
-  // Check if user exists and has active bookings
   const checkQuery = `
     SELECT u.id, COUNT(b.id) as active_bookings
     FROM users u

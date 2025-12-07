@@ -6,7 +6,6 @@ import { AppError } from "../../middlewares/error";
 const signupIntoDB = async (payload: Record<string, unknown>) => {
   const { name, email, password, phone, role } = payload;
 
-  // Check if user already exists
   const checkQuery = `SELECT id FROM users WHERE email = $1`;
   const checkResult = await pool.query(checkQuery, [email as string]);
 
